@@ -44,6 +44,28 @@ class ChatLogController: UICollectionViewController, UITextFieldDelegate, UIColl
         setupInputComponents()
     }
     func observeMessages() {
+        guard let uid = Auth.auth().currentUser?.uid, let toId = user?.id else { return }
+        
+        let userMessagesRef = Database.database().reference().child("user-messages").child(uid).child(toId)
+        userMessagesRef.observe(.childAdded, with: { (snapshot) in
+            let messageId = snapshot.key
+            let messageRef = Database.database().reference().child("messages").child(messageId)
+            messageRef.observeSingleEvent(of: .value, with: { (snapshot) in
+                guard let dictionary = snapshot.value as? [String: AnyObject] else { return }
+                
+                let message = Message(dictionary: dictionary)
+                
+                self.messages.append(message)
+                DispatchQueue.main.async {
+                    self.collectionView?.reloadData()
+                    let indexPath = IndexPath(item: self.messages.count - 1, section: 0)
+                    self.collectionView?.scrollToItem(at: indexPath, at: .bottom, animated: true)
+                }
+            }, withCancel: nil)
+        }, withCancel: nil)
+    }
+    /*
+    func observeMessages() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
         
         let userMessagesRef = Database.database().reference().child("user-messages").child(uid)
@@ -64,7 +86,8 @@ class ChatLogController: UICollectionViewController, UITextFieldDelegate, UIColl
             }, withCancel: nil)
         }, withCancel: nil)
     }
-    
+ */
+ 
     func setupInputComponents() {
         let containerView = UIView()
         containerView.backgroundColor = UIColor.white
