@@ -37,19 +37,34 @@ class ChatLogController: UICollectionViewController, UITextFieldDelegate, UIColl
     let cellId = "cellId"
     override func viewDidLoad() {
         super.viewDidLoad()
-        collectionView?.alwaysBounceVertical = true
+        //collectionView?.alwaysBounceVertical = true
         collectionView?.backgroundColor = UIColor.white
-        //collectionView?.register(ChatMessageCell.self, forCellWithReuseIdentifier: cellId)
+        collectionView?.register(ChatMessageCell.self, forCellWithReuseIdentifier: cellId)
         
         setupInputComponents()
     }
+    
+    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return messages.count
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath)
+        
+        return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        return CGSize(width: view.frame.height, height: 80)
+    }
+    
     func observeMessages() {
         guard let uid = Auth.auth().currentUser?.uid, let toId = user?.id else { return }
         
         let userMessagesRef = Database.database().reference().child("user-messages").child(uid).child(toId)
         userMessagesRef.observe(.childAdded, with: { (snapshot) in
             let messageId = snapshot.key
-            let messageRef = Database.database().reference().child("messages").child(messageId)
+            let messageRef = Database.database().reference().child("user-messages").child(messageId)
             messageRef.observeSingleEvent(of: .value, with: { (snapshot) in
                 guard let dictionary = snapshot.value as? [String: AnyObject] else { return }
                 
@@ -58,35 +73,13 @@ class ChatLogController: UICollectionViewController, UITextFieldDelegate, UIColl
                 self.messages.append(message)
                 DispatchQueue.main.async {
                     self.collectionView?.reloadData()
-                    let indexPath = IndexPath(item: self.messages.count - 1, section: 0)
-                    self.collectionView?.scrollToItem(at: indexPath, at: .bottom, animated: true)
+                   // let indexPath = IndexPath(item: self.messages.count - 1, section: 0)
+                   // self.collectionView?.scrollToItem(at: indexPath, at: .bottom, animated: true)
                 }
             }, withCancel: nil)
         }, withCancel: nil)
     }
-    /*
-    func observeMessages() {
-        guard let uid = Auth.auth().currentUser?.uid else { return }
-        
-        let userMessagesRef = Database.database().reference().child("user-messages").child(uid)
-        userMessagesRef.observe(.childAdded, with: { (snapshot) in
-            let messageId = snapshot.key
-            let messageRef = Database.database().reference().child("messages").child(messageId)
-            messageRef.observeSingleEvent(of: .value, with: { (snapshot) in
-                guard let dictionary = snapshot.value as? [String: AnyObject] else { return }
-                
-                let message = Message(dictionary: dictionary)
-                
-                if message.chatPartnerId() == self.user?.id {
-                    self.messages.append(message)
-                    DispatchQueue.main.async {
-                        self.collectionView?.reloadData()
-                    }
-                }
-            }, withCancel: nil)
-        }, withCancel: nil)
-    }
- */
+   
  
     func setupInputComponents() {
         let containerView = UIView()
@@ -129,26 +122,24 @@ class ChatLogController: UICollectionViewController, UITextFieldDelegate, UIColl
     }
     
     @objc func handleSend() {
-        let ref = Database.database().reference().child("messages")
+        let ref = Database.database().reference().child("user-messages")
         let childRef = ref.childByAutoId()
         let toId = user!.id!
         let fromId = Auth.auth().currentUser!.uid
         let timestamp = Int(Date().timeIntervalSince1970)
         let values = ["text": inputTextField.text!, "toId": toId, "fromId": fromId, "timestamp": timestamp] as [String : Any]
-
         
         childRef.updateChildValues(values) { (error, ref) in
             if error != nil {
                 print(error!)
                 return
             }
-
-            let userMessageRef = Database.database().reference().child("user-messages").child(fromId)
-
+        
+            self.inputTextField.text = nil
+            let userMessageRef = Database.database().reference().child("user-messages").child(fromId).child(toId)
             let messageId = childRef.key
-            userMessageRef.updateChildValues(values)
-
-            let recipientUserMessagesRef = Database.database().reference().child("user-messages").child(toId)
+            userMessageRef.updateChildValues([messageId: 1])
+            let recipientUserMessagesRef = Database.database().reference().child("user-messages").child(toId).child(fromId)
             recipientUserMessagesRef.updateChildValues([messageId: 1])
         }
     }

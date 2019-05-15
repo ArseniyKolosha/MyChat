@@ -91,7 +91,7 @@ class UserCell: UITableViewCell {
         timeLabel.rightAnchor.constraint(equalTo: self.rightAnchor).isActive = true
         timeLabel.topAnchor.constraint(equalTo: self.topAnchor, constant: 18).isActive = true
         timeLabel.widthAnchor.constraint(equalToConstant: 100)
-        timeLabel.heightAnchor.constraint(equalTo: textLabel!.heightAnchor).isActive = true
+        timeLabel.heightAnchor.constraint(equalTo: (textLabel?.heightAnchor)!).isActive = true
         
     }
     required init?(coder aDecoder: NSCoder) {

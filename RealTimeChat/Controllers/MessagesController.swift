@@ -13,6 +13,8 @@ class MessagesController: UITableViewController {
     
 
     let cellId = "cellId"
+    var messages = [Message]()
+    var messagesDictionary = [String: Message]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -21,18 +23,10 @@ class MessagesController: UITableViewController {
         
         let image = UIImage(named: "newMessage")
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: image, style: .plain, target: self, action: #selector(handleNewMessage))
-        
        checkIfUseIsLoggedIn()
-        
        tableView.register(UserCell.self, forCellReuseIdentifier: cellId)
-        
        observeUserMessages()
-        
-       
     }
-    
-    var messages = [Message]()
-    var messagesDictionary = [String: Message]()
     
     func observeUserMessages() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
@@ -41,29 +35,24 @@ class MessagesController: UITableViewController {
         ref.observe(.childAdded, with: { (snapshot) in
             
             let messageId = snapshot.key
-            let messageReference = Database.database().reference().child("messages").child(messageId)
+            let messageReference = Database.database().reference().child("user-messages").child(messageId)
             
             messageReference.observeSingleEvent(of: .value, with: { (snapshot) in
                 
                 if let dictionary = snapshot.value as? [String: AnyObject] {
                     let message = Message(dictionary: dictionary)
-                    
                     if let toId = message.toId {
                         self.messagesDictionary[toId] = message
-                        
                         self.messages = Array(self.messagesDictionary.values)
                         self.messages.sort(by: { (message1, message2) -> Bool in
                             return (message1.timestamp?.intValue)! > (message2.timestamp?.intValue)!
                         })
                     }
-                    
                     DispatchQueue.main.async(execute: {
                         self.tableView.reloadData()
                     })
                 }
-                
             }, withCancel: nil)
-            
         }, withCancel: nil)
     }
     
@@ -81,6 +70,8 @@ class MessagesController: UITableViewController {
     override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         return 63
     }
+    
+    
     
     @objc func handleNewMessage() {
         let newMessageController = NewMessageController()
